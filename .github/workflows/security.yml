@@ -1,0 +1,97 @@
+name: Security
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 7 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Semgrep full scan
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/javascript
+            p/nodejs
+            p/secrets
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks full scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trivy-fs:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+  trivy-image:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: loyalty-core-customer:nightly
+
+      - name: Trivy container scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: loyalty-core-customer:nightly
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+  checkmarx-sca-sast:
+    if: ${{ secrets.CHECKMARX_API_KEY != '' && secrets.CHECKMARX_TENANT != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkmarx scan
+        uses: Checkmarx/ast-github-action@2.3.25
+        with:
+          project_name: loyalty-core-customer
+          cx_tenant: ${{ secrets.CHECKMARX_TENANT }}
+          base_uri: ${{ secrets.CHECKMARX_BASE_URI }}
+          cx_api_key: ${{ secrets.CHECKMARX_API_KEY }}
+          branch: ${{ github.ref_name }}
+          additional_params: --scan-types sast,sca

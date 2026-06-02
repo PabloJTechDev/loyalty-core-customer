@@ -1,6 +1,14 @@
 {
-  "name": "core-customer",
+  "name": "loyalty-core-customer",
   "version": "0.1.0",
   "private": true,
-  "description": "Placeholder del core customer para coordinación con equipo Go"
+  "description": "Mock core-customer para trazabilidad capa a capa",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --check src/server.js"
+  },
+  "dependencies": {
+    "pg": "^8.21.0"
+  }
 }
