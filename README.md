@@ -1,8 +1,8 @@
 # loyalty-core-customer
 
-Technical core mock for the **customer** vertical of the loyalty platform.
+Technical core service for the **customer** vertical of the loyalty platform.
 
-This service is not pretending to be the full final domain implementation. Its purpose is to provide a believable core-facing integration point so the web and BFF can validate handoff, persistence, and lookup across the journey.
+This repository now runs on **Go + Postgres** and keeps the same traceability contract already consumed by the BFF and web layers.
 
 ---
 
@@ -21,7 +21,7 @@ It is responsible for:
 
 ## Journey records currently supported
 
-This core mock persists 3 types of traces:
+This core service persists 3 types of traces:
 
 - **customer enrollments**
 - **customer password changes**
@@ -54,26 +54,11 @@ It also stores the reusable technical context passed from the BFF:
 
 ## Technical highlights
 
-- **Node.js service** used as a lightweight core mock
+- **Go HTTP service** with standard library routing
 - **Postgres-backed persistence** for technical traces
-- **separate storage per journey stage**
+- **idempotent upserts** for trace updates per journey id
 - **lookup endpoints** used by the BFF and trace screens
-- enough realism to validate end-to-end integration without overbuilding the domain
-
----
-
-## Why this layer exists in the case study
-
-Without this service, the portfolio story would stop at “frontend and BFF talk to each other”.
-
-With this core mock in place, the project can demonstrate:
-
-- handoff from BFF to core
-- persistence outside the web layer
-- technical lookup by stage identifiers
-- end-to-end traceability across multiple steps
-
-That is much closer to real platform work.
+- lightweight implementation, but already aligned with the intended core stack
 
 ---
 
@@ -88,45 +73,56 @@ cp .env.example .env
 Main variables:
 
 - `PORT=3001`
-- `NODE_ENV=development`
+- `APP_ENV=development`
 - `DATABASE_URL=postgresql://loyalty_app:loyalty_app_dev_2026@127.0.0.1:5432/loyalty_platform` _(required)_
 
 ---
 
 ## Run locally
 
+Using the repo-local Go toolchain I left under `.tooling/go`:
+
 ```bash
-npm install
-npm run dev
+export PATH="$(pwd)/.tooling/go/bin:$PATH"
+go mod tidy
+go run .
+```
+
+Build binary:
+
+```bash
+export PATH="$(pwd)/.tooling/go/bin:$PATH"
+go build -o bin/core-customer .
 ```
 
 Test:
 
 ```bash
-npm test
+export PATH="$(pwd)/.tooling/go/bin:$PATH"
+go test ./...
 ```
 
 ---
 
 ## Validation status
 
-Latest validated status:
+Expected validation gates for this repo:
 
-- `npm test` ✅
+- `go test ./...`
+- `go build ./...`
+- Docker image build
 
-This currently validates the service syntax entrypoint and supports the full local journey already used by the web and BFF layers.
+If CI is green, the service is ready to be consumed by the BFF with the same HTTP contract.
 
 ---
 
 ## Architecture note
 
-This repository represents the layer that should eventually evolve toward the project’s intended core architecture:
+This repository now aligns with the project’s intended core direction:
 
-- Go as the long-term core stack
-- DDD light
-- hexagonal / clean architecture
-
-Right now it stays intentionally lightweight so the full journey can be demonstrated without blocking on the final domain implementation.
+- Go as core stack
+- explicit technical contract for handoff traces
+- room to evolve toward cleaner domain boundaries later
 
 Related docs:
 
@@ -137,8 +133,8 @@ Related docs:
 
 ## What I would improve next
 
-1. move from technical mock toward a more explicit domain model
-2. add stronger automated tests around persistence and lookup behavior
-3. separate infrastructure concerns from the HTTP entrypoint
-4. align the implementation more closely with the target Go ownership model
-5. prepare the repository for standalone publication with clearer contract examples and startup failure troubleshooting
+1. split handlers, repository, and bootstrap into separate packages
+2. add integration tests with ephemeral Postgres
+3. version the API contract explicitly
+4. add migrations instead of boot-time table creation
+5. align naming with the future domain model once the functional scope grows

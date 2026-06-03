@@ -20,16 +20,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          node-version: 22
+          go-version-file: go.mod
 
-      - name: Install dependencies
-        run: npm install
+      - name: Download modules
+        run: go mod download
 
-      - name: Syntax check
-        run: npm test
+      - name: Test
+        run: go test ./...
+
+      - name: Build
+        run: go build ./...
 
       - name: Extract version metadata
         id: meta

@@ -19,16 +19,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          node-version: 22
+          go-version-file: go.mod
 
-      - name: Install dependencies
-        run: npm install
+      - name: Download modules
+        run: go mod download
 
-      - name: Syntax check
-        run: npm test
+      - name: Format check
+        run: test -z "$(gofmt -l .)"
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build
+        run: go build ./...
 
   docker-build:
     runs-on: ubuntu-latest
@@ -57,8 +63,7 @@ jobs:
         uses: returntocorp/semgrep-action@v1
         with:
           config: >-
-            p/javascript
-            p/nodejs
+            p/golang
             p/secrets
 
   gitleaks:
@@ -74,23 +79,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  dependency-audit:
+  govulncheck:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          node-version: 22
+          go-version-file: go.mod
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: npm audit
-        run: npm audit --audit-level=high
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
 
   trivy-fs:
     runs-on: ubuntu-latest
